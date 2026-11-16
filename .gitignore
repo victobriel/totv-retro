@@ -1,0 +1,11 @@
+.gradle/
+build/
+.kotlin/
+local.properties
+keystore.properties
+*.jks
+*.keystore
+.idea/
+*.iml
+# Emulation cores are fetched by tools/fetch-cores.sh (pinned by SHA256 in tools/cores.lock)
+/cores/
