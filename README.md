@@ -6,8 +6,9 @@ a comunicação é só pela API HTTP de jogos do servidor Totv e por uma *intent
 
 - Pacote: `app.totv.retro` · minSdk 23 · targetSdk 35 · ABIs `armeabi-v7a` e `arm64-v8a`
 - Emulação: [LibretroDroid](https://github.com/Swordfish90/LibretroDroid) **0.14.0** + núcleos libretro embutidos
-- Plataformas: NES, Game Boy / Color, Game Boy Advance, Master System / Game Gear, PC Engine.
-  SNES e Mega Drive ficam atrás de uma flag de build (veja abaixo).
+- Plataformas: NES, Game Boy / Color, Game Boy Advance, Master System / Game Gear, PC Engine, SNES (supafaust) e
+  Mega Drive (blastem). **SNES e Mega Drive podem perder quadros em jogos pesados em aparelhos fracos**
+  (benchmark no Fire TV armv7: 57–59 fps em homebrew).
 
 Sem um jogo, o ícone do Totv Retro só mostra a tela "Abra um jogo pelo app Totv".
 
@@ -57,15 +58,15 @@ tools/fetch-cores.sh            # baixa os núcleos (confere SHA256 de tools/cor
 **Assinatura:** `keystore.properties` na raiz (ignorado pelo git) com `storeFile`, `storePassword`, `keyAlias`,
 `keyPassword`. Sem ele, o release é assinado com a chave de debug. Crie uma chave própria com `keytool`.
 
-**SNES e Mega Drive (desligados por padrão):**
+**Núcleo alternativo de Mega Drive (clownmdemu, AGPL-3.0, fora do APK por padrão):**
 
 ```bash
 tools/fetch-cores.sh --extra
-./gradlew :app:assembleRelease -PretroExtraCores=snes,md    # ou "all"
+./gradlew :app:assembleRelease -PretroExtraCores=clownmdemu
 ```
 
-Também vale um arquivo de decisão (`-PretroBenchDecision=/caminho`, linhas `snes=include` / `md=include`).
-Em tempo de execução, o app usa o que estiver embutido; plataformas sem núcleo mostram um erro claro.
+O blastem continua sendo o preferido; o clownmdemu só é usado se o servidor o listar antes e ele estiver embutido, ou
+se o blastem faltar. Em tempo de execução, o app usa o que estiver embutido; plataformas sem núcleo mostram um erro claro.
 
 ## Testes
 

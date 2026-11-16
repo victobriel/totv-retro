@@ -32,7 +32,7 @@ object CoreSelector {
         "gg" to listOf("smsplus"),
         "pce" to listOf("mednafen_pce_fast"),
         "snes" to listOf("mednafen_supafaust"),
-        "md" to listOf("clownmdemu", "blastem"),
+        "md" to listOf("blastem", "clownmdemu"),
     )
 
     /** GBA: per-ABI order. */

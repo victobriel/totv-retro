@@ -42,11 +42,11 @@ class CoreSelectorTest {
         assertEquals("mednafen_supafaust", (sel("snes", listOf("mednafen_supafaust"), base64 + "mednafen_supafaust", "arm64-v8a") as CoreChoice.Selected).core)
     }
 
-    @Test fun mdPrefersClownmdemuThenBlastem() {
+    @Test fun mdPrefersBlastemThenClownmdemu() {
         val emb = base64 + "blastem" + "clownmdemu"
-        assertEquals("clownmdemu", (sel("md", emptyList(), emb, "arm64-v8a") as CoreChoice.Selected).core)
-        assertEquals("blastem", (sel("md", emptyList(), base64 + "blastem", "arm64-v8a") as CoreChoice.Selected).core)
-        assertEquals("blastem", (sel("md", listOf("blastem", "clownmdemu"), emb, "arm64-v8a") as CoreChoice.Selected).core)
+        assertEquals("blastem", (sel("md", emptyList(), emb, "arm64-v8a") as CoreChoice.Selected).core)
+        assertEquals("clownmdemu", (sel("md", emptyList(), base64 + "clownmdemu", "arm64-v8a") as CoreChoice.Selected).core)
+        assertEquals("clownmdemu", (sel("md", listOf("clownmdemu", "blastem"), emb, "arm64-v8a") as CoreChoice.Selected).core)
     }
 
     @Test fun stateCoreWinsWhenEmbeddedAndSupportsPlatform() {

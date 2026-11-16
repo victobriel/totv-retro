@@ -6,25 +6,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-// ---- Optional cores (SNES / Mega Drive) ---------------------------------------------------------
-// Off by default. Enable with  -PretroExtraCores=snes,md   (or "all"), or with a decision file
-// (-PretroBenchDecision=/path/file, lines `snes=include` / `md=include`).
-// The cores themselves must have been fetched first:  tools/fetch-cores.sh --extra
-val extraCores: Set<String> = run {
-    val prop = (findProperty("retroExtraCores") as String?)?.split(',')?.map { it.trim().lowercase() }?.toMutableSet()
-        ?: mutableSetOf()
-    val decision = file(
-        (findProperty("retroBenchDecision") as String?)
-            ?: "/tmp/claude-1000/-home-victo-Desktop-personal-totv/720db899-8641-431d-bb7b-9ff354344d51/scratchpad/bench-decision.txt"
-    )
-    if (decision.isFile) {
-        decision.readLines().forEach { line ->
-            val (k, v) = (line.substringBefore('=').trim().lowercase()) to (line.substringAfter('=', "").trim().lowercase())
-            if (k in setOf("snes", "md") && v in setOf("include", "yes", "true", "1", "on")) prop += k
-        }
-    }
-    if ("all" in prop) setOf("snes", "md") else prop
-}
+// ---- Optional cores -----------------------------------------------------------------------------
+// SNES (supafaust) and Mega Drive (blastem) are part of the default build (see README, benchmark decision).
+// Only the alternative Mega Drive core clownmdemu (AGPL-3.0) is optional:  -PretroExtraCores=clownmdemu
+// after  tools/fetch-cores.sh --extra.
+val extraCores: Set<String> =
+    ((findProperty("retroExtraCores") as String?)?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet()) ?: emptySet()
 
 android {
     namespace = "app.totv.retro"
