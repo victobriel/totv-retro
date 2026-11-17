@@ -121,7 +121,8 @@ class Preparer(
             val tmp = romCache.target(mediaId, "download.tmp")
             val name = api.downloadRom(mediaId, extract = true, dest = tmp, progress = progress)
             val finalFile = File(tmp.parentFile, romFileName(name, platform))
-            if (!tmp.renameTo(finalFile)) throw PlayException(PlayException.Kind.NETWORK, "rename")
+            if (tmp.exists() && !tmp.renameTo(finalFile)) throw PlayException(PlayException.Kind.NETWORK, "rename")
+            if (!finalFile.isFile) throw PlayException(PlayException.Kind.NETWORK, "missing " + finalFile.name)
             finalFile
         }
 

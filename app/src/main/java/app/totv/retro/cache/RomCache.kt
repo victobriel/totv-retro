@@ -11,7 +11,9 @@ class RomCache(private val root: File, private val limitBytes: Long = 1L shl 30)
 
     /** The cached ROM for [mediaId] (and marks it as just used), or null. */
     fun get(mediaId: Long): File? {
-        val f = dir(mediaId).listFiles { x -> x.isFile && !x.name.endsWith(".part") }?.firstOrNull() ?: return null
+        val all = dir(mediaId).listFiles { x -> x.isFile && !x.name.endsWith(".part") } ?: return null
+        // a disc dump unpacked from a bundle has the .cue sheet next to its tracks: the sheet is the entry point
+        val f = all.firstOrNull { it.name.endsWith(".cue", ignoreCase = true) } ?: all.firstOrNull() ?: return null
         if (f.length() <= 0) return null
         f.setLastModified(System.currentTimeMillis())
         dir(mediaId).setLastModified(System.currentTimeMillis())

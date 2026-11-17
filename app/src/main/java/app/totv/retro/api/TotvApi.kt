@@ -113,8 +113,23 @@ class TotvApi(server: String, private val token: String, private val http: OkHtt
         val u = url("api", "games", "rom", mediaId.toString()).apply { if (extract) addQueryParameter("extract", "1") }.build()
         return call(req(u).get().build()) { resp ->
             copyTo(resp, dest, progress)
+            // A .cue dump comes as ONE store zip (sheet + tracks): unpack beside it so the core opens the .cue.
+            if (resp.header("X-Totv-Rom-Bundle").equals("zip", true)) unpackBundle(dest)
             romName(resp)
         }
+    }
+
+    private fun unpackBundle(zip: File) {
+        val dir = zip.parentFile!!.canonicalFile
+        java.util.zip.ZipFile(zip).use { zf ->
+            for (e in zf.entries()) {
+                if (e.isDirectory) continue
+                val out = File(dir, e.name.substringAfterLast('/').substringAfterLast('\\')).canonicalFile
+                if (out.parentFile != dir || out.name == zip.name) continue
+                zf.getInputStream(e).use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+            }
+        }
+        zip.delete()
     }
 
     fun downloadBios(platform: String, file: String, dest: File, progress: (Long, Long) -> Unit = { _, _ -> }) {
