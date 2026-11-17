@@ -41,8 +41,13 @@ object Tx {
     const val off = "Desligado"
     const val aspectOriginal = "Original"
     const val aspectStretch = "Esticar"
-    const val filterSharp = "Nítido"
-    const val filterSoft = "Suave"
+    const val rewind = "Rebobinar"
+    const val rewindHint = "Segure L2"
+    const val rewindUnavailable = "Rebobinar não está disponível neste jogo (estado grande demais)"
+    const val changeDisc = "Trocar disco"
+    const val discInserted = "No leitor"
+    const val discChanged = "Disco trocado"
+    const val discFailed = "Não foi possível trocar o disco"
     const val slot = "Slot"
     const val emptySlot = "Vazio"
     const val autoState = "Automático"
@@ -62,6 +67,7 @@ object Tx {
         "D-pad / analógico esquerdo" to "Direcional",
         "A / B / X / Y" to "Botões do jogo (A leste, B sul, como no SNES)",
         "L1 / R1 (ou L2 / R2)" to "Gatilhos L / R",
+        "L2 (segurar)" to "Rebobinar, quando ligado no menu (consoles 8/16 bits)",
         "Start / Select" to "Start / Select",
         "Select + Start" to "Abre o menu",
     )

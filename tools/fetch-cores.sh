@@ -10,7 +10,8 @@ BASE_URL="https://buildbot.libretro.com/nightly/android/latest"
 # abi:core  (gba: gpsp on armv7, mgba on arm64)
 BASE="armeabi-v7a:fceumm armeabi-v7a:gambatte armeabi-v7a:gpsp armeabi-v7a:smsplus armeabi-v7a:mednafen_pce_fast
 arm64-v8a:fceumm arm64-v8a:gambatte arm64-v8a:mgba arm64-v8a:smsplus arm64-v8a:mednafen_pce_fast
-armeabi-v7a:mednafen_supafaust arm64-v8a:mednafen_supafaust armeabi-v7a:blastem arm64-v8a:blastem"
+armeabi-v7a:mednafen_supafaust arm64-v8a:mednafen_supafaust armeabi-v7a:blastem arm64-v8a:blastem
+armeabi-v7a:pcsx_rearmed arm64-v8a:pcsx_rearmed"
 EXTRA=""
 for abi in armeabi-v7a arm64-v8a; do for c in clownmdemu; do EXTRA="$EXTRA $abi:$c"; done; done
 [ "${1:-}" = "--extra" ] && WANT="$BASE $EXTRA" || WANT="$BASE"

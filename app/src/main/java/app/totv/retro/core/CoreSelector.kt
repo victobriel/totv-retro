@@ -33,6 +33,7 @@ object CoreSelector {
         "pce" to listOf("mednafen_pce_fast"),
         "snes" to listOf("mednafen_supafaust"),
         "md" to listOf("blastem", "clownmdemu"),
+        "psx" to listOf("pcsx_rearmed"),
     )
 
     /** GBA: per-ABI order. */
@@ -52,6 +53,7 @@ object CoreSelector {
         "mednafen_supafaust" to setOf("snes"),
         "clownmdemu" to setOf("md"),
         "blastem" to setOf("md", "sms", "gg"),
+        "pcsx_rearmed" to setOf("psx"),
     )
 
     fun select(

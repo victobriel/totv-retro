@@ -55,11 +55,20 @@ data class Platform(
     val bios: List<BiosFile> = emptyList(),
 )
 
+/** One disc of a multi-disc set (`media[].discs[]`); [mediaId] is downloadable like any ROM. */
+@Serializable
+data class Disc(
+    val index: Int = 0,
+    val label: String = "",
+    val mediaId: Long,
+)
+
 @Serializable
 data class MediaVersion(
     val id: Long,
     val label: String = "",
     val size: Long? = null,
+    val discs: List<Disc> = emptyList(),
 )
 
 @Serializable

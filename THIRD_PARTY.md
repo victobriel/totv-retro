@@ -41,6 +41,9 @@ Núcleos de licença não comercial foram deliberadamente **excluídos**.
 | clownmdemu (alternativo, fora do APK) | Mega Drive | AGPL-3.0 | armeabi-v7a | 2026-11-16 02:58 | `68539e1af0a385397ec9a69f4babe2b8c94da1ef151edf7eb7490c0b9f7119d8` | `d1e1e8f69920f623e097ae6646b4144956faaa6c5aed07599b957cda716142e7` |
 | blastem | Mega Drive | GPL-3.0 | arm64-v8a | 2026-11-16 04:27 | `bb9fbd7b0b262c3d47923507f7980c94fb47f2fed8ab4247d356108d0bd2f916` | `ee07b7646428fa9b9c4a8402e47cd1507234d2e93764906b8e428ee771447f8b` |
 | blastem | Mega Drive | GPL-3.0 | armeabi-v7a | 2026-11-16 04:18 | `d805391613b3570c665e483147880e55862f30ce9fc77360b2c5c6fccf1e32f6` | `007af4a7971891162eabbeaedd63290750c718330c4a7bf430d3c4f76799b543` |
+| pcsx_rearmed | PlayStation 1 | GPL-2.0 | arm64-v8a | 2026-11-16 07:04 | `009d9baf7fab5bbd074d337b98a4e295015b914d1b872b0a6232d1ccba9ec405` | `773017f3424d16b8ff974f53b876a45fd8e95fad5aae24e272790a39e17b4f2a` |
+| pcsx_rearmed | PlayStation 1 | GPL-2.0 | armeabi-v7a | 2026-11-16 07:04 | `2532195282fafe92415b48447fec1ce3567ec2f71eee3597d82cf20fe4ea0fc5` | `7cae177d445527ea9741be304cd42dc00e4a90f68efd374f90e032294d56429f` |
+
 Decisão do benchmark (Fire TV, armv7): **SNES (mednafen_supafaust)** e **Mega Drive (blastem)** entram no build padrão, nas
 duas ABIs, com a ressalva de que podem perder quadros em jogos pesados em aparelhos fracos (57–59 fps em homebrew). O
 blastem tem build para arm64, então não há troca de núcleo por ABI. O **clownmdemu** (AGPL-3.0) é só alternativo: não vai no APK
@@ -63,6 +66,10 @@ código-fonte correspondente é o do ramo principal do repositório abaixo na da
 | mednafen_supafaust | https://github.com/libretro/supafaust | GPL-2.0+ |
 | clownmdemu (alternativo) | https://github.com/libretro/ClownMDEmu-libretro | AGPL-3.0 |
 | blastem | https://github.com/libretro/blastem | GPL-3.0 |
+| pcsx_rearmed | https://github.com/libretro/pcsx_rearmed | `COPYING` (GPL-2.0) |
+
+O pcsx_rearmed não inclui BIOS de PlayStation: o usuário fornece `scph5501.bin` (ou `scph1001.bin` / `scph7001.bin`) ao
+servidor Totv; o Totv Retro não distribui nenhuma BIOS.
 
 As licenças acima vêm do campo `license` dos arquivos `.info` do libretro-super
 (https://github.com/libretro/libretro-super/tree/master/dist/info) e dos arquivos de licença dos repositórios.

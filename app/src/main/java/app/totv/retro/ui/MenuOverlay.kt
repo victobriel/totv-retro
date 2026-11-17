@@ -20,11 +20,17 @@ interface MenuHost {
     val currentCore: String
     val fast: Boolean
     val stretch: Boolean
-    val sharp: Boolean
+    val filterLabel: String
+    val rewind: Boolean
+    /** Labels of the discs of a multi-disc game (empty otherwise) and the one currently inserted. */
+    val discs: List<String>
+    val currentDisc: Int
     val hasGamepad: Boolean
     fun toggleFast()
     fun toggleStretch()
-    fun toggleSharp()
+    fun cycleFilter()
+    fun toggleRewind()
+    fun changeDisc(index: Int)
     fun resumeGame()
     fun restartGame()
     fun exitGame()
@@ -111,9 +117,13 @@ class MenuOverlay(context: Context, private val scope: CoroutineScope, private v
         val asp = row(Tx.aspect, trailing = aspectName()) {}
         asp.setOnClickListener { host.toggleStretch(); asp.setTrailing(aspectName()) }
         p.add(asp)
-        val flt = row(Tx.filter, trailing = filterName()) {}
-        flt.setOnClickListener { host.toggleSharp(); flt.setTrailing(filterName()) }
+        val flt = row(Tx.filter, trailing = host.filterLabel) {}
+        flt.setOnClickListener { host.cycleFilter(); flt.setTrailing(host.filterLabel) }
         p.add(flt)
+        val rw = row(Tx.rewind, subtitle = Tx.rewindHint, trailing = onOff(host.rewind)) {}
+        rw.setOnClickListener { host.toggleRewind(); rw.setTrailing(onOff(host.rewind)) }
+        p.add(rw)
+        if (host.discs.size > 1) p.add(row(Tx.changeDisc, trailing = "›") { push(discsPanel()) })
         p.add(row(Tx.controls, trailing = "›") { push(controlsPanel()) })
         p.add(row(Tx.exit) { host.exitGame() })
         p.post { first.requestFocus() }
@@ -122,7 +132,18 @@ class MenuOverlay(context: Context, private val scope: CoroutineScope, private v
 
     private fun onOff(v: Boolean) = if (v) Tx.on else Tx.off
     private fun aspectName() = if (host.stretch) Tx.aspectStretch else Tx.aspectOriginal
-    private fun filterName() = if (host.sharp) Tx.filterSharp else Tx.filterSoft
+
+    private fun discsPanel(): SidePanel {
+        val p = SidePanel(context, Tx.changeDisc)
+        var focus: View? = null
+        host.discs.forEachIndexed { i, label ->
+            val r = p.add(row(label, trailing = if (i == host.currentDisc) Tx.discInserted else "") { host.changeDisc(i) })
+            if (i == host.currentDisc) focus = r
+        }
+        val back = p.add(row(Tx.back) { back() }, Sp.s)
+        p.post { (focus ?: back).requestFocus() }
+        return p
+    }
 
     private fun controlsPanel(): SidePanel {
         val p = SidePanel(context, Tx.controlsTitle, if (host.hasGamepad) null else Tx.gamepadHint)

@@ -40,7 +40,6 @@ import app.totv.retro.ui.Tx
 import com.swordfish.libretrodroid.GLRetroView
 import com.swordfish.libretrodroid.GLRetroViewData
 import com.swordfish.libretrodroid.LibretroDroid
-import com.swordfish.libretrodroid.ShaderConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -90,7 +89,15 @@ class PlayActivity : AppCompatActivity(), MenuHost {
 
     private val prefs by lazy { getSharedPreferences("retro", Context.MODE_PRIVATE) }
     override var stretch = false
-    override var sharp = true
+    private var filter = VideoFilter.SHARP
+    override val filterLabel get() = filter.label
+    override var rewind = false
+    override val discs get() = prepared?.discs.orEmpty()
+    override var currentDisc = 0
+    private val rewindBuf = RewindBuffer()
+    @Volatile private var rewinding = false
+    private var rewindKeyDown = false
+    private var rewindAxisDown = false
     override var fast = false
     override val currentCore get() = prepared?.core.orEmpty()
     override val hasGamepad get() = InputDevice.getDeviceIds().any { id ->
@@ -110,7 +117,6 @@ class PlayActivity : AppCompatActivity(), MenuHost {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         stretch = prefs.getBoolean("stretch", false)
-        sharp = prefs.getBoolean("sharp", true)
         root = FrameLayout(this).apply { setBackgroundColor(app.totv.retro.ui.C.black) }
         status = StatusView(this)
         menu = MenuOverlay(this, lifecycleScope, this)
@@ -209,6 +215,9 @@ class PlayActivity : AppCompatActivity(), MenuHost {
     // ---- emulation --------------------------------------------------------------------------------
 
     private fun startEmulation(p: Prepared) {
+        val pid = p.platform.id
+        filter = VideoFilter.parse(prefs.getString("filter_$pid", null)) ?: VideoFilter.defaultFor(pid)
+        rewind = prefs.getBoolean("rewind_$pid", RewindBuffer.defaultOn(pid))
         status.showLoading(Tx.starting, req?.title.orEmpty())
         val savesDir = File(filesDir, "saves").apply { mkdirs() }
         val data = GLRetroViewData(this).apply {
@@ -217,7 +226,7 @@ class PlayActivity : AppCompatActivity(), MenuHost {
             systemDirectory = File(filesDir, "system").absolutePath
             savesDirectory = savesDir.absolutePath
             saveRAMState = p.sram
-            shader = shaderFor(sharp)
+            shader = filter.config()
             rumbleEventsEnabled = false
             preferLowLatencyAudio = true
         }
@@ -281,6 +290,7 @@ class PlayActivity : AppCompatActivity(), MenuHost {
                 if (s != null) uploadSramIfChanged(s)
             }
         }
+        launch { rewindLoop() }
         launch { // autosave every 5 min
             while (true) {
                 delay(AUTOSAVE_MS)
@@ -290,7 +300,38 @@ class PlayActivity : AppCompatActivity(), MenuHost {
         }
     }
 
-    private fun shaderFor(sharp: Boolean): ShaderConfig = if (sharp) ShaderConfig.Sharp else ShaderConfig.Default
+    /**
+     * "Rebobinar": LibretroDroid has no native rewind, so keep a ring of serialized states (every
+     * [RewindBuffer.INTERVAL_MS], 32 MB cap) and, while L2 is held, step back through them. Platforms whose
+     * state does not fit (PS1) never record anything.
+     */
+    private suspend fun rewindLoop() {
+        var tooBig = false
+        while (true) {
+            val v = view
+            if (v == null || !rewind || tooBig || menu.isOpen) {
+                if (!rewind) { rewindBuf.clear(); setRewinding(false) }
+                delay(200); continue
+            }
+            if (rewinding) {
+                val s = rewindBuf.pop()
+                if (s != null) withContext(Dispatchers.Default) { runCatching { v.unserializeState(s) } }
+                delay(RewindBuffer.STEP_MS)
+            } else {
+                val s = withContext(Dispatchers.Default) { runCatching { v.serializeState() }.getOrNull() }
+                if (s != null && !rewindBuf.push(s)) { tooBig = true; rewindBuf.clear(); toast(Tx.rewindUnavailable) }
+                delay(RewindBuffer.INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun setRewinding(on: Boolean) {
+        if (rewinding == on) return
+        rewinding = on
+        view?.audioEnabled = !on && !menu.isOpen
+    }
+
+    private fun updateRewindHold() = setRewinding(rewind && gameRunning && !menu.isOpen && (rewindKeyDown || rewindAxisDown))
 
     private fun applyAspect() {
         val v = view ?: return
@@ -448,6 +489,9 @@ class PlayActivity : AppCompatActivity(), MenuHost {
             if (!down && chordConsumed) { if (!startDown && !selectDown) chordConsumed = false; return true }
         }
 
+        if (rewind && e.keyCode == KeyEvent.KEYCODE_BUTTON_L2 && isGamepad(e)) {
+            rewindKeyDown = down; updateRewindHold(); return true
+        }
         val mapped = PadMapper.gameKey(e.keyCode, isGamepad(e))
         if (mapped != null) {
             if (e.repeatCount == 0) v.sendKeyEvent(if (down) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP, mapped, portOf(e))
@@ -460,6 +504,10 @@ class PlayActivity : AppCompatActivity(), MenuHost {
         val v = view
         if (v != null && gameRunning && !menu.isOpen && e.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK &&
             e.action == MotionEvent.ACTION_MOVE) {
+            if (rewind) {
+                val lt = maxOf(e.getAxisValue(MotionEvent.AXIS_LTRIGGER), e.getAxisValue(MotionEvent.AXIS_BRAKE)) > 0.5f
+                if (lt != rewindAxisDown) { rewindAxisDown = lt; updateRewindHold() }
+            }
             val ax = PadMapper.dpadAxis(e.getAxisValue(MotionEvent.AXIS_X), e.getAxisValue(MotionEvent.AXIS_HAT_X))
             val ay = PadMapper.dpadAxis(e.getAxisValue(MotionEvent.AXIS_Y), e.getAxisValue(MotionEvent.AXIS_HAT_Y))
             if (ax != lastSentAxisX || ay != lastSentAxisY) {
@@ -476,6 +524,7 @@ class PlayActivity : AppCompatActivity(), MenuHost {
     private fun openMenu() {
         val v = view ?: return
         if (menu.isOpen) return
+        rewindKeyDown = false; rewindAxisDown = false; setRewinding(false)
         v.frameSpeed = 0
         v.audioEnabled = false
         menu.open()
@@ -490,9 +539,33 @@ class PlayActivity : AppCompatActivity(), MenuHost {
 
     override fun toggleFast() { fast = !fast }
     override fun toggleStretch() { stretch = !stretch; prefs.edit().putBoolean("stretch", stretch).apply(); applyAspect() }
-    override fun toggleSharp() { sharp = !sharp; prefs.edit().putBoolean("sharp", sharp).apply(); view?.shader = shaderFor(sharp) }
+    private fun pid() = prepared?.platform?.id.orEmpty()
+
+    override fun cycleFilter() {
+        filter = filter.next()
+        prefs.edit().putString("filter_${pid()}", filter.id).apply()
+        view?.shader = filter.config()
+    }
+
+    override fun toggleRewind() {
+        rewind = !rewind
+        rewindBuf.clear()
+        prefs.edit().putBoolean("rewind_${pid()}", rewind).apply()
+    }
+
+    override fun changeDisc(index: Int) {
+        val v = view ?: return
+        if (index == currentDisc || index !in discs.indices) return
+        lifecycleScope.launch {
+            val ok = withContext(Dispatchers.Default) { runCatching { v.changeDisk(index); true }.getOrDefault(false) }
+            if (ok) currentDisc = index
+            toast(if (ok) Tx.discChanged else Tx.discFailed)
+            if (ok) resumeGame()
+        }
+    }
 
     override fun restartGame() {
+        rewindBuf.clear()
         view?.reset()
         resumeGame()
     }
@@ -545,7 +618,7 @@ class PlayActivity : AppCompatActivity(), MenuHost {
                 runCatching { v.unserializeState(a.state(state.id)) }.getOrDefault(false)
             }
             toast(if (ok) Tx.loadedToast else Tx.loadFailed)
-            if (ok) resumeGame()
+            if (ok) { rewindBuf.clear(); resumeGame() }
         }
     }
 

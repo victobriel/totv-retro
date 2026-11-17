@@ -26,18 +26,28 @@ class RomCache(private val root: File, private val limitBytes: Long = 1L shl 30)
     }
 
     /** Deletes least-recently-used entries until under the limit, never touching [keepMediaId]. */
-    fun trim(keepMediaId: Long? = null) {
-        val entries = root.listFiles { f -> f.isDirectory }?.map { it to sizeOf(it) } ?: return
+    fun trim(keepMediaId: Long? = null) = trim(setOfNotNull(keepMediaId))
+
+    /** Where the generated `.m3u` of a multi-disc set lives (outside the per-media dirs; never evicted). */
+    fun playlistFile(mediaId: Long): File = File(File(root, PLAYLIST_DIR).apply { mkdirs() }, "$mediaId.m3u")
+
+    fun trim(keep: Set<Long>) {
+        val entries = root.listFiles { f -> f.isDirectory && !f.name.startsWith("_") }?.map { it to sizeOf(it) } ?: return
         var total = entries.sumOf { it.second }
         for ((d, size) in entries.sortedBy { it.first.lastModified() }) {
             if (total <= limitBytes) break
-            if (d.name == keepMediaId?.toString()) continue
+            if (d.name.toLongOrNull() in keep) continue
             d.deleteRecursively()
             total -= size
         }
     }
 
+    /** Path of [file] (inside a media dir) as seen from the playlist dir, for `.m3u` lines. */
+    fun relativeToPlaylistDir(file: File): String = file.relativeTo(File(root, PLAYLIST_DIR)).path.replace(File.separatorChar, '/')
+
     fun totalSize(): Long = sizeOf(root)
 
     private fun sizeOf(f: File): Long = if (f.isFile) f.length() else f.listFiles()?.sumOf { sizeOf(it) } ?: 0L
+
+    private companion object { const val PLAYLIST_DIR = "_m3u" }
 }

@@ -7,7 +7,8 @@ a comunicação é só pela API HTTP de jogos do servidor Totv e por uma *intent
 - Pacote: `app.totv.retro` · minSdk 23 · targetSdk 35 · ABIs `armeabi-v7a` e `arm64-v8a`
 - Emulação: [LibretroDroid](https://github.com/Swordfish90/LibretroDroid) **0.14.0** + núcleos libretro embutidos
 - Plataformas: NES, Game Boy / Color, Game Boy Advance, Master System / Game Gear, PC Engine, SNES (supafaust) e
-  Mega Drive (blastem). **SNES e Mega Drive podem perder quadros em jogos pesados em aparelhos fracos**
+  Mega Drive (blastem) e **PlayStation 1** (pcsx_rearmed; **precisa de uma BIOS fornecida por você**, veja abaixo; desempenho
+no armv7 ainda não medido). **SNES e Mega Drive podem perder quadros em jogos pesados em aparelhos fracos**
   (benchmark no Fire TV armv7: 57–59 fps em homebrew).
 
 Sem um jogo, o ícone do Totv Retro só mostra a tela "Abra um jogo pelo app Totv".
@@ -42,7 +43,18 @@ se mudou.
 - **Controle remoto (Fire TV):** direcionais, OK = A, Play/Pause = Start, Menu = Select, **Voltar** = menu.
   Um gamepad é recomendado (o app mostra um aviso quando não há nenhum).
 - **Menu (Voltar fecha a camada mais interna):** Continuar, Salvar estado (slots 1–9 com miniatura), Carregar
-  estado, Reiniciar, Avanço rápido, Proporção (original/esticar), Filtro (nítido/suave), Controles, Sair.
+  estado, Reiniciar, Avanço rápido, Proporção (original/esticar), Filtro (nítido, suave, CRT, LCD, pixel art; salvo por
+  plataforma), Rebobinar (segure **L2**; ligado por padrão nos 8/16 bits, desligado no PS1; salvo por plataforma),
+  Trocar disco (jogos de vários discos), Controles, Sair.
+
+## PlayStation 1
+
+- Núcleo pcsx_rearmed (GPL-2.0). Extensões `.cue`, `.bin`, `.chd`, `.pbp`, `.m3u`; plataforma `psx`.
+- **BIOS:** o app não traz nenhuma. Coloque `scph5501.bin` (ou `scph1001.bin` / `scph7001.bin`) na pasta de BIOS do
+  servidor Totv e liste-a em `/api/games/platforms` (plataforma `psx`); o app baixa de `/api/games/bios/psx/<arquivo>`.
+- **Vários discos:** quando a versão tem `discs[]`, o app baixa todos os discos, gera um `.m3u` local e o menu ganha
+  "Trocar disco".
+- **Rebobinar** guarda estados serializados (limite de 32 MB); estados do PS1 são grandes demais, então fica desligado.
 
 ## Compilar
 

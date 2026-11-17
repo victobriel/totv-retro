@@ -29,6 +29,8 @@ class Prepared(
     val resumeStateId: Long?,
     val resumeSkipped: Boolean,
     val saves: Saves,
+    /** Disc labels of a multi-disc set (empty when single disc); [rom] is then the generated `.m3u`. */
+    val discs: List<String> = emptyList(),
 )
 
 /** Network + disk preparation of a game launch (no Android UI): platforms, item, BIOS, ROM, SRAM, state. */
@@ -70,7 +72,8 @@ class Preparer(
         val resumeOk = wantedState != null && CoreSelector.canLoadState(core, wantedState.core)
 
         // BIOS
-        for (b in platform.bios) {
+        if (platformId == "psx") ensurePsxBios(platform)
+        else for (b in platform.bios) {
             if (!b.present) {
                 if (b.required) throw PlayException(PlayException.Kind.BIOS_MISSING, b.file)
                 continue
@@ -83,24 +86,75 @@ class Preparer(
 
         // ROM
         val mediaId = req.mediaId ?: item.media.firstOrNull()?.id ?: throw PlayException(PlayException.Kind.NO_MEDIA)
-        val rom = romCache.get(mediaId) ?: run {
-            status(Step.ROM, 0, 0)
-            val tmp = romCache.target(mediaId, "download.tmp")
-            val name = api.downloadRom(mediaId, extract = true, dest = tmp) { d, t -> status(Step.ROM, d, t) }
-            val finalFile = File(tmp.parentFile, romFileName(name, platform))
-            if (!tmp.renameTo(finalFile)) throw PlayException(PlayException.Kind.NETWORK, "rename")
-            finalFile
+        val discs = item.media.firstOrNull { it.id == mediaId }?.discs.orEmpty().sortedBy { it.index }
+        val rom: File
+        val discLabels: List<String>
+        if (discs.size > 1) {
+            // Multi-disc set: download every disc, then play a local .m3u that lists them in order.
+            val files = discs.mapIndexed { i, d ->
+                downloadRom(d.mediaId, platform) { done, total ->
+                    val pct = if (total > 0) (done * 100 / total).coerceIn(0, 100) else 0L
+                    status(Step.ROM, i * 100L + pct, discs.size * 100L)
+                }
+            }
+            rom = romCache.playlistFile(mediaId).also { m3u ->
+                m3u.writeText(files.joinToString("\n", postfix = "\n") { romCache.relativeToPlaylistDir(it) })
+            }
+            discLabels = discs.mapIndexed { i, d -> d.label.ifBlank { "Disco ${i + 1}" } }
+            romCache.trim(discs.map { it.mediaId }.toSet() + mediaId)
+        } else {
+            rom = downloadRom(mediaId, platform) { d, t -> status(Step.ROM, d, t) }
+            discLabels = emptyList()
+            romCache.trim(keepMediaId = mediaId)
         }
-        romCache.trim(keepMediaId = mediaId)
 
         // Saves
         status(Step.SAVE, 0, 0)
         val sram = api.sram(req.itemId, core)
         val state = if (resumeOk) api.state(wantedState!!.id) else null
-        return Prepared(item, platform, core, rom, mediaId, sram, state, wantedState?.id, req.stateId != null && !resumeOk, saves)
+        return Prepared(item, platform, core, rom, mediaId, sram, state, wantedState?.id, req.stateId != null && !resumeOk, saves, discLabels)
+    }
+
+    private fun downloadRom(mediaId: Long, platform: Platform, progress: (Long, Long) -> Unit): File =
+        romCache.get(mediaId) ?: run {
+            progress(0, 0)
+            val tmp = romCache.target(mediaId, "download.tmp")
+            val name = api.downloadRom(mediaId, extract = true, dest = tmp, progress = progress)
+            val finalFile = File(tmp.parentFile, romFileName(name, platform))
+            if (!tmp.renameTo(finalFile)) throw PlayException(PlayException.Kind.NETWORK, "rename")
+            finalFile
+        }
+
+    /**
+     * PS1 needs one of a few BIOS images (any one will do). Uses what is already in the system dir, else tries the
+     * server's list, else (server that does not know `psx` yet) the usual names. The core wants lowercase names.
+     */
+    private fun ensurePsxBios(platform: Platform) {
+        val listed = platform.bios.filter { Regex("""scph\d+\.bin""", RegexOption.IGNORE_CASE).matches(it.file) }
+        val wanted = (PSX_BIOS + listed.map { it.file.lowercase() }).distinct()
+        fun local(name: String) = File(systemDir, name)
+        if (wanted.any { n -> local(n).let { it.isFile && it.length() > 0 } }) return
+        var failure: ApiException? = null
+        for (name in wanted) {
+            val entry = listed.firstOrNull { it.file.equals(name, true) }
+            if (platform.bios.isNotEmpty() && listed.isNotEmpty() && entry?.present != true) continue // server says it has no such file
+            status(Step.BIOS, 0, 0)
+            val dest = local(name)
+            try {
+                api.downloadBios(platform.id, entry?.file ?: name, dest) { d, t -> status(Step.BIOS, d, t) }
+                if (dest.isFile && dest.length() > 0) return
+            } catch (e: ApiException) {
+                dest.delete()
+                if (e.isAuth || e.isForbidden) throw e
+                failure = e
+            }
+        }
+        throw PlayException(PlayException.Kind.BIOS_MISSING, PSX_BIOS.first(), failure)
     }
 
     companion object {
+        val PSX_BIOS = listOf("scph5501.bin", "scph1001.bin", "scph7001.bin")
+
         fun safeName(n: String) = n.substringAfterLast('/').substringAfterLast('\\').ifBlank { "file.bin" }
 
         /** The cores detect the content type by extension: keep the server's name, unless it is a zip. */
@@ -114,7 +168,7 @@ class Preparer(
 
         fun defaultExt(platform: String) = when (platform) {
             "nes" -> ".nes"; "snes" -> ".sfc"; "gb" -> ".gb"; "gbc" -> ".gbc"; "gba" -> ".gba"
-            "md" -> ".md"; "sms" -> ".sms"; "gg" -> ".gg"; "pce" -> ".pce"; else -> ".bin"
+            "psx" -> ".cue"; "md" -> ".md"; "sms" -> ".sms"; "gg" -> ".gg"; "pce" -> ".pce"; else -> ".bin"
         }
 
         fun md5(f: File): String {
