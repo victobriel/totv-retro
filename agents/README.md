@@ -18,6 +18,10 @@ Não há CI, `AGENTS.md` nem `CLAUDE.md` no repositório; este sistema não subs
 | Testes unitários | [testes.md](testes.md) | Sonnet | `app/src/test/` |
 | Build e release | [build-release.md](build-release.md) | Sonnet | `build.gradle.kts`, `settings.gradle.kts`, `gradle*`, `gradlew*`, `app/build.gradle.kts`, `app/proguard-rules.pro` |
 | Documentação | [docs.md](docs.md) | Haiku | `README.md`, `THIRD_PARTY.md` |
+| Orquestração (ponto de entrada, não edita código) | [orquestrador.md](orquestrador.md) | Sonnet | `agents/` (só leitura para roteamento) |
+
+O **orquestrador** é o ponto de entrada: recebe o pedido, roteia pela tabela acima, despacha os agentes das áreas
+afetadas e consolida o resultado.
 
 A justificativa de cada área (arquivos que a mostram) está em cada arquivo de agente. Os modelos e a regra de
 roteamento estão em [models.md](models.md).
