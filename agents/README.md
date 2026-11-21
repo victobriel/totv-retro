@@ -1,9 +1,12 @@
 # Sistema de agentes — Totv Retro
 
-Definição e regras para dividir o trabalho neste repositório entre agentes especializados. **Não há runtime
-aqui**: cada arquivo descreve um agente (escopo, limites, critério de pronto, escalonamento e modelo). Quem
-orquestra (o coordenador) lê esta pasta, roteia a tarefa pela área dona dos caminhos afetados e passa o arquivo
-do agente como instrução.
+Definição e regras para dividir o trabalho neste repositório entre agentes especializados. Cada arquivo aqui
+descreve um agente (escopo, limites, critério de pronto, escalonamento e modelo). O Claude Code lê estas
+definições pelos pontos de entrada em `.claude/agents/`, um por agente, com o modelo no frontmatter; eles apenas
+apontam para cá, e a fonte da verdade continua sendo este diretório.
+
+**Como usar:** `claude --agent orquestrador` na raiz do repositório. O orquestrador roteia a tarefa pela área dona
+dos caminhos afetados e chama o sub-agente da área pelo nome.
 
 Não há CI, `AGENTS.md` nem `CLAUDE.md` no repositório; este sistema não substitui nenhum deles.
 

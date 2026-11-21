@@ -72,19 +72,27 @@ desse arquivo e de [models.md](models.md). Use-a até que o README defina uma or
 
 ## Como despachar
 
-Cada sub-agente é um worker do Orca iniciado com o arquivo `agents/<agente>.md` como instrução, no escopo dele.
-Comando de referência (confira a skill de orquestração do Orca antes de usar; flags não verificadas aqui):
+Caminho principal: chame o sub-agente nativo do Claude Code pelo nome, com a ferramenta de sub-agentes (Agent). Os
+sub-agentes estão em `.claude/agents/<agente>.md`, cada um com o modelo da tabela de [models.md](models.md) no
+frontmatter, e apontam para `agents/<agente>.md` (a fonte da verdade). Nomes: `emulacao-sessao`, `nucleos`,
+`integracao-totv`, `interface-controles`, `testes`, `build-release`, `docs`.
+
+- **Spec curta e completa:** caminho do arquivo do agente, tarefa, caminhos permitidos, comando de prova esperado e
+  o que deve voltar no relatório (arquivos alterados, comando e saída da prova, pendências).
+- **Paralelismo:** chame sub-agentes com escopos disjuntos na mesma resposta; sequencial quando um depende do outro.
+- **Retorno:** só consolide quando cada sub-agente tiver devolvido a prova ou declarado que ela não foi feita.
+
+Alternativa: worker do Orca (`orca orchestration worker-start`), para tarefa longa ou que precise de workspace
+separado. Confira a skill de orquestração do Orca antes de usar; as flags abaixo não foram verificadas aqui.
 
 ```sh
 orca orchestration worker-start --environment local --worktree new-child --repo <projeto> --agent claude \
   --spec "Siga agents/<agente>.md como instrução e faça só a tarefa abaixo. <tarefa>"
 ```
 
-- **Modelo:** use o modelo da tabela de [models.md](models.md) para cada agente. Passe-o pela opção de modelo do
-  Orca, cuja flag precisa ser conferida na skill (não está no comando de referência).
+- **Modelo:** no worker, passe o modelo da tabela de [models.md](models.md) pela opção de modelo do Orca (flag a
+  conferir na skill).
 - **Arquivo do agente precisa estar commitado** na base do worktree novo. Arquivo só no working tree não chega ao worker.
-- **Spec curta e completa:** caminho do arquivo do agente, tarefa, caminhos permitidos, comando de prova esperado e
-  o que deve voltar no relatório (arquivos alterados, comando e saída da prova, pendências).
 - **Acompanhe o retorno** pelo canal do Orca. Espere cada worker fechar (`worker_done`, falha, parada ou abandono)
   antes de consolidar.
 
